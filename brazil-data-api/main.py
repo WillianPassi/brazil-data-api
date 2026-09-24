@@ -84,7 +84,7 @@ CACHE_INDICADORES: Dict[str, Any] = {
 # APLICAÇÃO FASTAPI & METADADOS OPENAPI (OTIMIZADO PARA RAPIDAPI)
 # ==============================================================================
 app = FastAPI(
-    title="Brazil Data & Financial API",
+    title="Brazil Hub - Data, Boletos & PIX API",
     description="""
 API de alta performance para validação, enriquecimento de dados cadastrais e utilitários financeiros do Brasil.
 Desenvolvida para integração direta com **RapidAPI** e deploy em ambientes PaaS como **Render.com**.

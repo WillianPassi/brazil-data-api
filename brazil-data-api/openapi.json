@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Brazil Data & Financial API",
+    "title": "Brazil Hub - Data, Boletos & PIX API",
     "description": "\nAPI de alta performance para validação, enriquecimento de dados cadastrais e utilitários financeiros do Brasil.\nDesenvolvida para integração direta com **RapidAPI** e deploy em ambientes PaaS como **Render.com**.\n\n### Módulos Disponíveis:\n- **Monitoramento**: Health Check e status de uptime.\n- **Endereçamento**: Consulta e normalização de CEP via ViaCEP.\n- **Receita & Empresas**: Validação antecipada (Módulo 11) e consulta de CNPJ com Quadro Societário.\n- **Validações Universais**: Validação matemática de CPF, CNPJ e detecção automática de Chaves PIX.\n- **Boletos Bancários**: Validação, decodificação de Linha Digitável, cálculo de vencimento Febraban e conversão para Código de Barras.\n- **PIX EMVCo**: Geração de código \"PIX Copia e Cola\" oficial (CRC16) e decodificação de payloads PIX.\n- **Indicadores Econômicos**: Cotações de Dólar e Euro em tempo real e taxas Selic, CDI e IPCA.\n    ",
     "version": "1.1.0"
   },

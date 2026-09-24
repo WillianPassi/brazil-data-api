@@ -1,4 +1,4 @@
-# 🇧🇷 Brazil Data & Financial API
+# 🇧🇷 Brazil Hub - Data, Boletos & PIX API
 
 Micro-serviço em Python de alta performance construído com **FastAPI**, **Pydantic v2** e **Requests (com HTTP Connection Pooling)** para validação cadastral, decodificação de boletos, geração de PIX e indicadores financeiros do Brasil.
 
