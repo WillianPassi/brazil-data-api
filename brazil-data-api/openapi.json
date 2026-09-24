@@ -1,0 +1,1305 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Brazil Data & Financial API",
+    "description": "\nAPI de alta performance para validação, enriquecimento de dados cadastrais e utilitários financeiros do Brasil.\nDesenvolvida para integração direta com **RapidAPI** e deploy em ambientes PaaS como **Render.com**.\n\n### Módulos Disponíveis:\n- **Monitoramento**: Health Check e status de uptime.\n- **Endereçamento**: Consulta e normalização de CEP via ViaCEP.\n- **Receita & Empresas**: Validação antecipada (Módulo 11) e consulta de CNPJ com Quadro Societário.\n- **Validações Universais**: Validação matemática de CPF, CNPJ e detecção automática de Chaves PIX.\n- **Boletos Bancários**: Validação, decodificação de Linha Digitável, cálculo de vencimento Febraban e conversão para Código de Barras.\n- **PIX EMVCo**: Geração de código \"PIX Copia e Cola\" oficial (CRC16) e decodificação de payloads PIX.\n- **Indicadores Econômicos**: Cotações de Dólar e Euro em tempo real e taxas Selic, CDI e IPCA.\n    ",
+    "version": "1.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "Monitoramento"
+        ],
+        "summary": "Health Check do serviço",
+        "description": "Retorna status 200 e timestamp indicando que o micro-serviço está operacional no Render/Cloud.",
+        "operationId": "get_health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cep/{cep}": {
+      "get": {
+        "tags": [
+          "Endereçamento"
+        ],
+        "summary": "Consulta e validação de CEP",
+        "description": "Sanitiza e valida se o CEP possui 8 dígitos, realizando consulta rápida e segura ao ViaCEP.",
+        "operationId": "get_cep_api_v1_cep__cep__get",
+        "parameters": [
+          {
+            "name": "cep",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Código postal brasileiro com ou sem traço",
+              "examples": [
+                "01001-000",
+                "01001000"
+              ],
+              "title": "Cep"
+            },
+            "description": "Código postal brasileiro com ou sem traço"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CepResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cnpj/{cnpj}": {
+      "get": {
+        "tags": [
+          "Receita & Empresas"
+        ],
+        "summary": "Consulta e enriquecimento cadastral de CNPJ",
+        "description": "Sanitiza e valida matematicamente o CNPJ via Módulo 11 (retornando 400 se inválido) antes de consultar a BrasilAPI com timeout reduzido de 5s.",
+        "operationId": "get_cnpj_api_v1_cnpj__cnpj__get",
+        "parameters": [
+          {
+            "name": "cnpj",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "CNPJ da empresa com ou sem máscara",
+              "examples": [
+                "00.000.000/0001-91",
+                "00000000000191"
+              ],
+              "title": "Cnpj"
+            },
+            "description": "CNPJ da empresa com ou sem máscara"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CnpjResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/validador": {
+      "post": {
+        "tags": [
+          "Validações"
+        ],
+        "summary": "Validador unificado de CPF, CNPJ e Chave PIX",
+        "description": "Valida matematicamente CPF e CNPJ (Módulo 11) ou detecta automaticamente o subtipo e valida a formatação de chaves PIX.",
+        "operationId": "post_validador_api_v1_validador_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValidadorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidadorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boleto/decodificar": {
+      "post": {
+        "tags": [
+          "Boletos Bancários"
+        ],
+        "summary": "Validação e decodificação de Linha Digitável de Boleto",
+        "description": "Valida e decodifica linhas digitáveis de boletos bancários (47 dígitos) e contas de concessionárias/tributos (48 dígitos). Extrai banco emissor, valor exato em R$, data de vencimento Febraban e monta o código de barras de 44 dígitos.",
+        "operationId": "post_decodificar_boleto_api_v1_boleto_decodificar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BoletoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BoletoResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pix/gerar": {
+      "post": {
+        "tags": [
+          "PIX EMVCo"
+        ],
+        "summary": "Gerador de código PIX Copia e Cola (Padrão BACEN / EMVCo)",
+        "description": "Gera a string oficial do PIX Copia e Cola com cálculo automático do checksum CRC16 conforme as especificações do Banco Central do Brasil.",
+        "operationId": "post_gerar_pix_api_v1_pix_gerar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PixGerarRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PixGerarResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/pix/decodificar": {
+      "post": {
+        "tags": [
+          "PIX EMVCo"
+        ],
+        "summary": "Leitor e decodificador de código PIX Copia e Cola",
+        "description": "Decodifica uma string de PIX Copia e Cola, validando o checksum CRC16 e extraindo chave, recebedor, cidade, valor e TXID.",
+        "operationId": "post_decodificar_pix_api_v1_pix_decodificar_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PixDecodificarRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PixDecodificarResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/indicadores": {
+      "get": {
+        "tags": [
+          "Indicadores Econômicos"
+        ],
+        "summary": "Cotações de Moedas (Dólar/Euro) e Taxas Oficiais (Selic, CDI, IPCA)",
+        "description": "Retorna em tempo real cotações de câmbio comercial (compra, venda e variação diária) e taxas econômicas oficiais do Brasil com cache inteligente em memória.",
+        "operationId": "get_indicadores_api_v1_indicadores_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicadoresResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BancoBoletoInfo": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo",
+            "example": "237"
+          },
+          "nome": {
+            "type": "string",
+            "title": "Nome",
+            "example": "Banco Bradesco S.A."
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo",
+          "nome"
+        ],
+        "title": "BancoBoletoInfo"
+      },
+      "BoletoRequest": {
+        "properties": {
+          "codigo": {
+            "type": "string",
+            "title": "Codigo",
+            "description": "Linha digitável de boleto bancário (47 dígitos) ou concessionária (48 dígitos) ou código de barras (44 dígitos)",
+            "example": "23793.38128 60083.013528 85000.633303 9 84340000015000"
+          }
+        },
+        "type": "object",
+        "required": [
+          "codigo"
+        ],
+        "title": "BoletoRequest"
+      },
+      "BoletoResponse": {
+        "properties": {
+          "valido": {
+            "type": "boolean",
+            "title": "Valido",
+            "example": true
+          },
+          "tipo": {
+            "type": "string",
+            "title": "Tipo",
+            "description": "'titulo_bancario' ou 'concessionaria_tributo'",
+            "example": "titulo_bancario"
+          },
+          "banco": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BancoBoletoInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "segmento": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Segmento"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor",
+            "example": 150.0
+          },
+          "vencimento": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vencimento",
+            "example": "2024-03-25"
+          },
+          "codigo_barras": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo Barras",
+            "example": "23799843400000150003381260083013528500063330"
+          },
+          "linha_digitavel": {
+            "type": "string",
+            "title": "Linha Digitavel",
+            "example": "23793.38128 60083.013528 85000.633303 9 84340000015000"
+          },
+          "mensagem": {
+            "type": "string",
+            "title": "Mensagem",
+            "example": "Boleto bancário válido e decodificado com sucesso."
+          }
+        },
+        "type": "object",
+        "required": [
+          "valido",
+          "tipo",
+          "linha_digitavel",
+          "mensagem"
+        ],
+        "title": "BoletoResponse"
+      },
+      "CambioInfo": {
+        "properties": {
+          "dolar_comercial": {
+            "$ref": "#/components/schemas/CotacaoMoeda"
+          },
+          "euro": {
+            "$ref": "#/components/schemas/CotacaoMoeda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dolar_comercial",
+          "euro"
+        ],
+        "title": "CambioInfo"
+      },
+      "CepResponse": {
+        "properties": {
+          "cep": {
+            "type": "string",
+            "title": "Cep",
+            "description": "CEP formatado",
+            "example": "01001-000"
+          },
+          "cep_limpo": {
+            "type": "string",
+            "title": "Cep Limpo",
+            "description": "Apenas dígitos",
+            "example": "01001000"
+          },
+          "logradouro": {
+            "type": "string",
+            "title": "Logradouro",
+            "example": "Praça da Sé"
+          },
+          "complemento": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complemento",
+            "example": "lado ímpar"
+          },
+          "bairro": {
+            "type": "string",
+            "title": "Bairro",
+            "example": "Sé"
+          },
+          "cidade": {
+            "type": "string",
+            "title": "Cidade",
+            "example": "São Paulo"
+          },
+          "estado": {
+            "type": "string",
+            "title": "Estado",
+            "example": "SP"
+          },
+          "ddd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ddd",
+            "example": "11"
+          },
+          "codigo_ibge": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo Ibge",
+            "example": "3550308"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cep",
+          "cep_limpo",
+          "logradouro",
+          "bairro",
+          "cidade",
+          "estado"
+        ],
+        "title": "CepResponse"
+      },
+      "CnaeInfo": {
+        "properties": {
+          "codigo": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Codigo",
+            "example": 6422100
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao",
+            "example": "Bancos múltiplos, com carteira comercial"
+          }
+        },
+        "type": "object",
+        "title": "CnaeInfo"
+      },
+      "CnpjResponse": {
+        "properties": {
+          "cnpj": {
+            "type": "string",
+            "title": "Cnpj",
+            "example": "00.000.000/0001-91"
+          },
+          "cnpj_limpo": {
+            "type": "string",
+            "title": "Cnpj Limpo",
+            "example": "00000000000191"
+          },
+          "razao_social": {
+            "type": "string",
+            "title": "Razao Social",
+            "example": "BANCO DO BRASIL SA"
+          },
+          "nome_fantasia": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome Fantasia",
+            "example": "DIRECAO GERAL"
+          },
+          "situacao_cadastral": {
+            "type": "string",
+            "title": "Situacao Cadastral",
+            "example": "ATIVA"
+          },
+          "data_inicio_atividade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Inicio Atividade",
+            "example": "1966-08-01"
+          },
+          "cnae_principal": {
+            "$ref": "#/components/schemas/CnaeInfo"
+          },
+          "endereco": {
+            "$ref": "#/components/schemas/EnderecoInfo"
+          },
+          "quadro_societario": {
+            "items": {
+              "$ref": "#/components/schemas/SocioResumido"
+            },
+            "type": "array",
+            "title": "Quadro Societario"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cnpj",
+          "cnpj_limpo",
+          "razao_social",
+          "situacao_cadastral",
+          "cnae_principal",
+          "endereco"
+        ],
+        "title": "CnpjResponse"
+      },
+      "CotacaoMoeda": {
+        "properties": {
+          "nome": {
+            "type": "string",
+            "title": "Nome"
+          },
+          "compra": {
+            "type": "number",
+            "title": "Compra"
+          },
+          "venda": {
+            "type": "number",
+            "title": "Venda"
+          },
+          "variacao_percentual": {
+            "type": "number",
+            "title": "Variacao Percentual"
+          },
+          "alta": {
+            "type": "number",
+            "title": "Alta"
+          },
+          "baixa": {
+            "type": "number",
+            "title": "Baixa"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nome",
+          "compra",
+          "venda",
+          "variacao_percentual",
+          "alta",
+          "baixa"
+        ],
+        "title": "CotacaoMoeda"
+      },
+      "DetalhesValidacao": {
+        "properties": {
+          "subtipo_pix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtipo Pix",
+            "example": "email"
+          },
+          "algoritmo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Algoritmo",
+            "example": "Módulo 11 (Receita Federal)"
+          },
+          "valor_formatado": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor Formatado",
+            "example": "529.982.247-25"
+          }
+        },
+        "type": "object",
+        "title": "DetalhesValidacao"
+      },
+      "EnderecoInfo": {
+        "properties": {
+          "tipo_logradouro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tipo Logradouro",
+            "example": "PRAÇA"
+          },
+          "logradouro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logradouro",
+            "example": "DA SÉ"
+          },
+          "numero": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numero",
+            "example": "111"
+          },
+          "complemento": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Complemento",
+            "example": "ANDAR 1"
+          },
+          "bairro": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bairro",
+            "example": "CENTRO"
+          },
+          "municipio": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Municipio",
+            "example": "SÃO PAULO"
+          },
+          "uf": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uf",
+            "example": "SP"
+          },
+          "cep": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cep",
+            "example": "01001-000"
+          }
+        },
+        "type": "object",
+        "title": "EnderecoInfo"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "example": "online"
+          },
+          "timestamp": {
+            "type": "string",
+            "title": "Timestamp",
+            "example": "2026-09-24T14:53:13.000Z"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service",
+            "default": "brazil-data-api"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version",
+            "default": "1.1.0"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "timestamp"
+        ],
+        "title": "HealthResponse"
+      },
+      "IndicadoresResponse": {
+        "properties": {
+          "cambio": {
+            "$ref": "#/components/schemas/CambioInfo"
+          },
+          "taxas": {
+            "$ref": "#/components/schemas/TaxasBrasilInfo"
+          },
+          "atualizado_em": {
+            "type": "string",
+            "title": "Atualizado Em"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cambio",
+          "taxas",
+          "atualizado_em"
+        ],
+        "title": "IndicadoresResponse"
+      },
+      "PixDecodificarRequest": {
+        "properties": {
+          "payload": {
+            "type": "string",
+            "title": "Payload",
+            "description": "String completa do código PIX Copia e Cola (inicia com '000201')",
+            "example": "00020126440014br.gov.bcb.pix0122contato@exemplo.com.br5204000053039865406150.005802BR5913EMPRESA TESTE6009SAO PAULO62130509PEDIDO1236304D123"
+          }
+        },
+        "type": "object",
+        "required": [
+          "payload"
+        ],
+        "title": "PixDecodificarRequest"
+      },
+      "PixDecodificarResponse": {
+        "properties": {
+          "valido": {
+            "type": "boolean",
+            "title": "Valido"
+          },
+          "chave": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chave"
+          },
+          "beneficiario": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beneficiario"
+          },
+          "cidade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cidade"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          },
+          "txid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Txid"
+          },
+          "crc16_valido": {
+            "type": "boolean",
+            "title": "Crc16 Valido"
+          },
+          "mensagem": {
+            "type": "string",
+            "title": "Mensagem"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valido",
+          "crc16_valido",
+          "mensagem"
+        ],
+        "title": "PixDecodificarResponse"
+      },
+      "PixGerarRequest": {
+        "properties": {
+          "chave": {
+            "type": "string",
+            "title": "Chave",
+            "description": "Chave PIX (CPF, CNPJ, e-mail, telefone ou aleatória)",
+            "example": "contato@empresa.com.br"
+          },
+          "nome_recebedor": {
+            "type": "string",
+            "maxLength": 25,
+            "title": "Nome Recebedor",
+            "description": "Nome do recebedor (máx 25 caracteres)",
+            "example": "EMPRESA EXEMPLO LTDA"
+          },
+          "cidade_recebedor": {
+            "type": "string",
+            "maxLength": 15,
+            "title": "Cidade Recebedor",
+            "description": "Cidade do recebedor (máx 15 caracteres)",
+            "default": "SAO PAULO",
+            "example": "SAO PAULO"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.01
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor",
+            "description": "Valor em R$ da cobrança (opcional)",
+            "example": 150.0
+          },
+          "identificador": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 25
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Identificador",
+            "description": "TXID / Identificador da cobrança (padrão '***')",
+            "default": "***",
+            "example": "FATURA123"
+          },
+          "descricao": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Descricao",
+            "description": "Descrição opcional do pagamento",
+            "example": "Pagamento de Servicos"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chave",
+          "nome_recebedor"
+        ],
+        "title": "PixGerarRequest"
+      },
+      "PixGerarResponse": {
+        "properties": {
+          "pix_copia_e_cola": {
+            "type": "string",
+            "title": "Pix Copia E Cola",
+            "description": "Código payload oficial no padrão EMVCo do Banco Central pronto para copiar e colar"
+          },
+          "chave": {
+            "type": "string",
+            "title": "Chave"
+          },
+          "beneficiario": {
+            "type": "string",
+            "title": "Beneficiario"
+          },
+          "cidade": {
+            "type": "string",
+            "title": "Cidade"
+          },
+          "valor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valor"
+          },
+          "txid": {
+            "type": "string",
+            "title": "Txid"
+          },
+          "mensagem": {
+            "type": "string",
+            "title": "Mensagem"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pix_copia_e_cola",
+          "chave",
+          "beneficiario",
+          "cidade",
+          "txid",
+          "mensagem"
+        ],
+        "title": "PixGerarResponse"
+      },
+      "SocioResumido": {
+        "properties": {
+          "nome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nome",
+            "example": "ALAN CARLOS GUEDES DE OLIVEIRA"
+          },
+          "qualificacao": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualificacao",
+            "example": "Diretor"
+          },
+          "faixa_etaria": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Faixa Etaria",
+            "example": "Entre 41 a 50 anos"
+          },
+          "data_entrada": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Entrada",
+            "example": "2023-05-17"
+          }
+        },
+        "type": "object",
+        "title": "SocioResumido"
+      },
+      "TaxasBrasilInfo": {
+        "properties": {
+          "selic_anual": {
+            "type": "number",
+            "title": "Selic Anual",
+            "example": 10.5
+          },
+          "cdi_anual": {
+            "type": "number",
+            "title": "Cdi Anual",
+            "example": 10.4
+          },
+          "ipca_anual": {
+            "type": "number",
+            "title": "Ipca Anual",
+            "example": 4.23
+          }
+        },
+        "type": "object",
+        "required": [
+          "selic_anual",
+          "cdi_anual",
+          "ipca_anual"
+        ],
+        "title": "TaxasBrasilInfo"
+      },
+      "TipoValidacaoEnum": {
+        "type": "string",
+        "enum": [
+          "cpf",
+          "cnpj",
+          "pix_chave"
+        ],
+        "title": "TipoValidacaoEnum"
+      },
+      "ValidadorRequest": {
+        "properties": {
+          "tipo": {
+            "$ref": "#/components/schemas/TipoValidacaoEnum",
+            "description": "Tipo de documento ou chave a validar ('cpf', 'cnpj' ou 'pix_chave')",
+            "example": "cpf"
+          },
+          "valor": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Valor",
+            "description": "Valor a ser validado com ou sem formatação",
+            "example": "529.982.247-25"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "valor"
+        ],
+        "title": "ValidadorRequest"
+      },
+      "ValidadorResponse": {
+        "properties": {
+          "tipo": {
+            "type": "string",
+            "title": "Tipo",
+            "example": "cpf"
+          },
+          "valor_original": {
+            "type": "string",
+            "title": "Valor Original",
+            "example": "529.982.247-25"
+          },
+          "valor_limpo": {
+            "type": "string",
+            "title": "Valor Limpo",
+            "example": "52998224725"
+          },
+          "valido": {
+            "type": "boolean",
+            "title": "Valido",
+            "example": true
+          },
+          "mensagem": {
+            "type": "string",
+            "title": "Mensagem",
+            "example": "CPF válido matematicamente."
+          },
+          "detalhes": {
+            "$ref": "#/components/schemas/DetalhesValidacao"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tipo",
+          "valor_original",
+          "valor_limpo",
+          "valido",
+          "mensagem",
+          "detalhes"
+        ],
+        "title": "ValidadorResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
